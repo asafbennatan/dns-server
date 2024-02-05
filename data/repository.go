@@ -1,46 +1,50 @@
 package data
 
 import (
-	"dnsServer/api"
+	"dnsServer/daos"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
 	"time"
 )
 
-type Zone struct {
-	gorm.Model
-	Name      string   `gorm:"unique"`
-	Records   []Record // One-to-many relationship
+type Base struct {
+	ID        string `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+type Zone struct {
+	Base
+	Name    string `gorm:"unique"`
+	Records []Record
 }
 
 type Record struct {
-	gorm.Model
-	Name      string
-	Type      string
-	Value     string
-	TTL       int
-	ZoneID    uint // Foreign key for Zone
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Base
+	Name   string
+	Type   string
+	Value  string
+	TTL    int
+	ZoneID string
 }
 
-func (zs *Zone) ToDNSZone() api.DNSZone {
-	return api.DNSZone{
+func (zs *Zone) ToDNSZone() daos.DNSZone {
+	return daos.DNSZone{
 		ID:   zs.ID,
 		Name: zs.Name,
 	}
 }
 
-func (zs *Record) ToDNSRecord() api.DNSRecord {
-	return api.DNSRecord{
-		ID:    zs.ID,
-		Name:  zs.Name,
-		Type:  zs.Type,
-		Value: zs.Value,
-		TTL:   zs.TTL,
+func (zs *Record) ToDNSRecord() daos.DNSRecord {
+	return daos.DNSRecord{
+		ID:        zs.ID,
+		Name:      zs.Name,
+		Type:      zs.Type,
+		Value:     zs.Value,
+		TTL:       zs.TTL,
+		DNSZoneID: zs.ZoneID,
 	}
 }
 

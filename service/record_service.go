@@ -1,11 +1,11 @@
 package service
 
 import (
-	"dnsServer/api"
+	"dnsServer/daos"
 	"dnsServer/data"
 	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type RecordService struct {
@@ -16,62 +16,68 @@ func NewRecordService(db *gorm.DB) *RecordService {
 	return &RecordService{db: db}
 }
 
-func (zs *RecordService) CreateRecord(zoneId uint, create api.DNSRecordCreate) api.DNSRecord {
+func (zs *RecordService) CreateRecord(zoneId string, create daos.DNSRecordCreate) daos.DNSRecord {
 
 	record := data.Record{
-		Model:     gorm.Model{},
-		Name:      create.Name,
-		Type:      create.Type,
-		Value:     create.Value,
-		TTL:       create.TTL,
-		ZoneID:    zoneId,
-		CreatedAt: time.Time{},
-		UpdatedAt: time.Time{},
+		Base: data.Base{
+			ID: uuid.NewString(),
+		},
+		Name:   create.Name,
+		Type:   create.Type,
+		Value:  create.Value,
+		TTL:    create.TTL,
+		ZoneID: zoneId,
 	}
 	zs.db.Create(&record).Commit()
 	return record.ToDNSRecord()
 }
 
-func (zs *RecordService) UpdateRecord(update api.DNSRecordUpdate) api.DNSRecord {
+func (zs *RecordService) UpdateRecord(update daos.DNSRecordUpdate) daos.DNSRecord {
 
 	record := data.Record{
-		Model:     gorm.Model{},
-		Name:      update.Name,
-		Type:      update.Type,
-		Value:     update.Value,
-		TTL:       update.TTL,
-		CreatedAt: time.Time{},
-		UpdatedAt: time.Time{},
+		Base: data.Base{
+			ID: update.ID,
+		},
+		Name:  update.Name,
+		Type:  update.Type,
+		Value: update.Value,
+		TTL:   update.TTL,
 	}
 	zs.db.Updates(&record).Commit()
 	return record.ToDNSRecord()
 
 }
 
-func (zs *RecordService) DeleteRecord(recordId uint) {
-	record := data.Record{}
+func (zs *RecordService) DeleteRecord(recordId string) {
+	record := data.Record{
+		Base: data.Base{
+			ID: recordId,
+		},
+	}
 	record.ID = recordId
 	zs.db.Delete(&record).Commit()
 }
 
-func (zs *RecordService) GetRecord(recordId uint) api.DNSRecord {
-	record := data.Record{}
-	res := zs.db.First(record, recordId)
+func (zs *RecordService) GetRecord(recordId string) (*daos.DNSRecord, error) {
+	var record data.Record
+	res := zs.db.Where("id = ?", recordId).First(&record) // Corrected line
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			// Record not found
-		} else {
-			// Other error
+			// Optionally handle not found error specifically
+			return nil, res.Error
 		}
+		// Handle other possible errors
+		return nil, res.Error
 	}
-	return record.ToDNSRecord()
+	dnsRecord := record.ToDNSRecord() // Presumably converts data.Record to daos.DNSRecord
+	return &dnsRecord, nil
 }
 
-func (zs *RecordService) GetRecords(zoneId uint, nameLike string) []api.DNSRecord {
+func (zs *RecordService) GetRecords(zoneId string, nameLike string) []daos.DNSRecord {
 	var records []data.Record
 
-	zs.db.Where("name ILIKE ? and zone_id = ", "%"+nameLike+"%", zoneId).Find(&records)
-	var toRet []api.DNSRecord
+	zs.db.Where("name ILIKE ? and zone_id = ?", "%"+nameLike+"%", zoneId).Find(&records)
+	var toRet []daos.DNSRecord
 	for _, record := range records {
 		toRet = append(toRet, record.ToDNSRecord())
 	}

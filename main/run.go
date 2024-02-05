@@ -1,36 +1,58 @@
 package main
 
 import (
+	"context"
+	"dnsServer/api"
 	"dnsServer/server"
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
 
 func main() {
 	// Start the DNS server and get the stop channel
-	dnsServer, err := server.NewDNSServer(":8080")
+	Run()
+}
+
+func Run() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	dnsServer, err := server.NewDNSServer(":53")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	dnsServer.Start()
 
-	// Set up channel to listen for OS interrupt signal (e.g., CTRL+C)
-	osSignal := make(chan os.Signal, 1)
-	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+	handle := api.StartApiServer(":8080")
+	stopChan := make(chan os.Signal, 1)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-stopChan // Wait for SIGINT/SIGTERM
+		println("Shutting down server...")
 
-	// Block until an OS signal is received
-	sig := <-osSignal
-	fmt.Printf("Received signal: %v, shutting down...\n", sig)
+		// Create a context with a timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
+		if err := handle.Shutdown(ctx); err != nil {
+			println("Shutdown error:", err)
+		} else {
+			println("Server gracefully stopped")
+		}
+		dnsServer.Stop()
+
+		// Wait a moment for the server to shut down gracefully
+		time.Sleep(time.Second)
+
+		fmt.Println("Server stopped")
+		wg.Done()
+	}()
 	// Send stop signal to the DNS server
-	dnsServer.Stop()
 
-	// Wait a moment for the server to shut down gracefully
-	time.Sleep(time.Second)
+	wg.Wait() // Wait for server to shut down
 
-	fmt.Println("Server stopped")
 }

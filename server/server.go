@@ -29,13 +29,13 @@ func NewDNSServer(address string) (*DNSServer, error) {
 		fmt.Println("Error:", err)
 		return nil, err
 	}
-	return &DNSServer{conn: conn, stopSignal: stopSignal}, nil
+	return &DNSServer{addr: address, conn: conn, stopSignal: stopSignal}, nil
 
 }
 
 func (server *DNSServer) Start() {
 
-	fmt.Println("Server is listening on port " + server.addr)
+	fmt.Printf("DNS Server is listening on %s\n", server.addr)
 	go func() {
 		for {
 			// Set a timeout for reading from the connection

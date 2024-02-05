@@ -1,4 +1,4 @@
-package api
+package daos
 
 type DNSRecordCreate struct {
 	Name  string `json:"name"`

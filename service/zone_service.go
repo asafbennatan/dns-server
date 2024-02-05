@@ -1,11 +1,10 @@
 package service
 
 import (
-	"dnsServer/api"
+	"dnsServer/daos"
 	"dnsServer/data"
-	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type ZoneService struct {
@@ -16,52 +15,56 @@ func NewZoneService(db *gorm.DB) *ZoneService {
 	return &ZoneService{db: db}
 }
 
-func (zs *ZoneService) CreateZone(create api.DNSZoneCreate) api.DNSZone {
+func (zs *ZoneService) CreateZone(create daos.DNSZoneCreate) daos.DNSZone {
 	zone := data.Zone{
-		Model:     gorm.Model{},
-		Name:      create.Name,
-		CreatedAt: time.Time{},
-		UpdatedAt: time.Time{},
+		Base: data.Base{
+			ID: uuid.NewString(),
+		},
+		Name: create.Name,
 	}
 	zs.db.Create(&zone).Commit()
 	return zone.ToDNSZone()
 }
 
-func (zs *ZoneService) UpdateZone(update api.DNSZoneUpdate) api.DNSZone {
+func (zs *ZoneService) UpdateZone(update daos.DNSZoneUpdate) daos.DNSZone {
 	zone := data.Zone{
-		Model:     gorm.Model{},
-		Name:      update.Name,
-		CreatedAt: time.Time{},
-		UpdatedAt: time.Time{},
+		Base: data.Base{
+			ID: update.ID,
+		},
+		Name: update.Name,
 	}
 	zs.db.Updates(&zone).Commit()
 	return zone.ToDNSZone()
 }
 
-func (zs *ZoneService) DeleteZone(zoneId uint) {
-	zone := data.Zone{}
-	zone.ID = zoneId
+func (zs *ZoneService) DeleteZone(zoneId string) {
+	zone := data.Zone{
+		Base: data.Base{
+			ID: zoneId,
+		},
+	}
 	zs.db.Delete(&zone).Commit()
 }
 
-func (zs *ZoneService) GetZone(zoneId uint) api.DNSZone {
-	zone := data.Zone{}
-	res := zs.db.First(zone, zoneId)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			// Record not found
-		} else {
-			// Other error
-		}
+func (zs *ZoneService) GetZone(zoneId string) (*daos.DNSZone, error) {
+	zone := data.Zone{
+		Base: data.Base{
+			ID: zoneId,
+		},
 	}
-	return zone.ToDNSZone()
+	res := zs.db.First(&zone)
+	if res.Error != nil {
+		return nil, res.Error // Return the error to the caller
+	}
+	dnsZone := zone.ToDNSZone() // Presumably converts data.Zone to api.DNSZone
+	return &dnsZone, nil
 }
 
-func (zs *ZoneService) GetZones(nameLike string) []api.DNSZone {
+func (zs *ZoneService) GetZones(nameLike string) []daos.DNSZone {
 	var records []data.Zone
 
 	zs.db.Where("name ILIKE ?", "%"+nameLike+"%").Find(&records)
-	var toRet []api.DNSZone
+	var toRet []daos.DNSZone
 	for _, record := range records {
 		toRet = append(toRet, record.ToDNSZone())
 	}
