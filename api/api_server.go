@@ -195,7 +195,11 @@ func updateRecord(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not get database connection", http.StatusInternalServerError)
 		return
 	}
-	record := recordService.UpdateRecord(data)
+	record, err := recordService.UpdateRecord(data)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(record)
 }

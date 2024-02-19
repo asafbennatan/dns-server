@@ -32,7 +32,7 @@ func (zs *RecordService) CreateRecord(zoneId string, create daos.DNSRecordCreate
 	return record.ToDNSRecord()
 }
 
-func (zs *RecordService) UpdateRecord(update daos.DNSRecordUpdate) daos.DNSRecord {
+func (zs *RecordService) UpdateRecord(update daos.DNSRecordUpdate) (*daos.DNSRecord, error) {
 
 	record := data.Record{
 		Base: data.Base{
@@ -44,18 +44,13 @@ func (zs *RecordService) UpdateRecord(update daos.DNSRecordUpdate) daos.DNSRecor
 		TTL:   update.TTL,
 	}
 	zs.db.Updates(&record).Commit()
-	return record.ToDNSRecord()
+	return zs.GetRecord(update.ID)
 
 }
 
 func (zs *RecordService) DeleteRecord(recordId string) {
-	record := data.Record{
-		Base: data.Base{
-			ID: recordId,
-		},
-	}
-	record.ID = recordId
-	zs.db.Delete(&record).Commit()
+
+	zs.db.Where("id = ?", recordId).Delete(&data.Record{})
 }
 
 func (zs *RecordService) GetRecord(recordId string) (*daos.DNSRecord, error) {

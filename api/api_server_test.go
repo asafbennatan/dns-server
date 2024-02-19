@@ -173,7 +173,8 @@ func TestZone(t *testing.T) {
 	})
 
 	t.Run("GetRecord", func(t *testing.T) {
-		resp, err := http.Get(fmt.Sprintf("http://localhost:8080/api/record/%s", createdRecord.ID))
+		url := fmt.Sprintf("http://localhost:8080/api/record/%s", createdRecord.ID)
+		resp, err := http.Get(url)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			t.Fatalf("Failed to get record, err: %v, status code: %v", err, resp.StatusCode)
 		}
@@ -199,7 +200,7 @@ func TestZone(t *testing.T) {
 
 	t.Run("GetRecordAfterDelete", func(t *testing.T) {
 		resp, err := http.Get("http://localhost:8080/api/record/" + createdRecord.ID)
-		if err == nil || resp.StatusCode != http.StatusNotFound {
+		if err != nil || resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("got record,expected not found err: %v, status code: %v", err, resp.StatusCode)
 		}
 		defer resp.Body.Close()
@@ -220,7 +221,7 @@ func TestZone(t *testing.T) {
 
 	t.Run("GetZoneAfterDelete", func(t *testing.T) {
 		resp, err := http.Get("http://localhost:8080/api/zone/" + createdZone.ID)
-		if err == nil || resp.StatusCode != http.StatusNotFound {
+		if err != nil || resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("got zone,expected not found err: %v, status code: %v", err, resp.StatusCode)
 		}
 		defer resp.Body.Close()
